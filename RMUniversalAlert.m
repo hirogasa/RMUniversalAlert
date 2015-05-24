@@ -11,6 +11,7 @@
 #import <UIAlertController+Blocks/UIAlertController+Blocks.h>
 
 #import "RMUniversalAlert.h"
+#import "UIActionSheet+BlocksKit.h"
 
 static NSInteger const RMUniversalAlertNoButtonExistsIndex = -1;
 
@@ -41,11 +42,11 @@ static NSInteger const RMUniversalAlertFirstOtherButtonIndex = 2;
                                  tapBlock:(RMUniversalAlertCompletionBlock)tapBlock
 {
     RMUniversalAlert *alert = [[RMUniversalAlert alloc] init];
-    
+
     alert.hasCancelButton = cancelButtonTitle != nil;
     alert.hasDestructiveButton = destructiveButtonTitle != nil;
     alert.hasOtherButtons = otherButtonTitles.count > 0;
-    
+
     if ([UIAlertController class]) {
         alert.alertController = [UIAlertController showAlertInViewController:viewController
                                                                    withTitle:title message:message
@@ -58,39 +59,14 @@ static NSInteger const RMUniversalAlertFirstOtherButtonIndex = 2;
                                                                         }
                                                                     }];
     } else {
-        NSMutableArray *other = [NSMutableArray array];
-        
-        if (destructiveButtonTitle) {
-            [other addObject:destructiveButtonTitle];
-        }
-        
-        if (otherButtonTitles) {
-            [other addObjectsFromArray:otherButtonTitles];
-        }
-        
-        alert.alertView =  [UIAlertView showWithTitle:title
-                                              message:message
-                                    cancelButtonTitle:cancelButtonTitle
-                                    otherButtonTitles:other
-                                             tapBlock:^(UIAlertView *alertView, NSInteger buttonIndex){
-                                                 if (tapBlock) {
-                                                     if (buttonIndex == alertView.cancelButtonIndex) {
-                                                         tapBlock(alert, RMUniversalAlertCancelButtonIndex);
-                                                     } else if (destructiveButtonTitle) {
-                                                         if (buttonIndex == alertView.firstOtherButtonIndex) {
-                                                             tapBlock(alert, RMUniversalAlertDestructiveButtonIndex);
-                                                         } else if (otherButtonTitles.count) {
-                                                             NSInteger otherOffset = buttonIndex - alertView.firstOtherButtonIndex;
-                                                             tapBlock(alert, RMUniversalAlertFirstOtherButtonIndex + otherOffset - 1);
-                                                         }
-                                                     } else if (otherButtonTitles.count) {
-                                                         NSInteger otherOffset = buttonIndex - alertView.firstOtherButtonIndex;
-                                                         tapBlock(alert, RMUniversalAlertFirstOtherButtonIndex + otherOffset);
-                                                     }
-                                                 }
-                                             }];
+        UIAlertView *alertView = [[UIAlertView alloc]initWithTitle:title
+                                                           message:message
+                                                          delegate:viewController
+                                                 cancelButtonTitle:cancelButtonTitle
+                                                 otherButtonTitles:nil];
+        [alertView show];
     }
-    
+
     return alert;
 }
 
@@ -104,13 +80,13 @@ static NSInteger const RMUniversalAlertFirstOtherButtonIndex = 2;
                                        tapBlock:(RMUniversalAlertCompletionBlock)tapBlock
 {
     RMUniversalAlert *alert = [[RMUniversalAlert alloc] init];
-    
+
     alert.hasCancelButton = cancelButtonTitle != nil;
     alert.hasDestructiveButton = destructiveButtonTitle != nil;
     alert.hasOtherButtons = otherButtonTitles.count > 0;
-    
+
     if ([UIAlertController class]) {
-        
+
         alert.alertController = [UIAlertController showActionSheetInViewController:viewController
                                                                          withTitle:title
                                                                            message:message
@@ -120,9 +96,9 @@ static NSInteger const RMUniversalAlertFirstOtherButtonIndex = 2;
                                                 popoverPresentationControllerBlock:^(UIPopoverPresentationController *popover){
                                                     if (popoverPresentationControllerBlock) {
                                                         RMPopoverPresentationController *configuredPopover = [RMPopoverPresentationController new];
-                                                        
+
                                                         popoverPresentationControllerBlock(configuredPopover);
-                                                        
+
                                                         popover.sourceView = configuredPopover.sourceView;
                                                         popover.sourceRect = configuredPopover.sourceRect;
                                                         popover.barButtonItem = configuredPopover.barButtonItem;
@@ -134,60 +110,35 @@ static NSInteger const RMUniversalAlertFirstOtherButtonIndex = 2;
                                                                               }
                                                                           }];
     } else {
-        
-        void(^actionSheetTapBlock)(UIActionSheet *actionSheet, NSInteger buttonIndex) = ^(UIActionSheet *actionSheet, NSInteger buttonIndex){
-            if (tapBlock) {
-                if (buttonIndex == actionSheet.cancelButtonIndex) {
-                    tapBlock(alert, RMUniversalAlertCancelButtonIndex);
-                } else if (buttonIndex == actionSheet.destructiveButtonIndex) {
-                    tapBlock(alert, RMUniversalAlertDestructiveButtonIndex);
-                } else if (otherButtonTitles.count) {
-                    NSInteger otherOffset = buttonIndex - actionSheet.firstOtherButtonIndex;
-                    tapBlock(alert, RMUniversalAlertFirstOtherButtonIndex + otherOffset);
-                }
+
+        UIActionSheet *actionSheet = [[UIActionSheet alloc] init];
+        actionSheet.delegate = viewController;
+        actionSheet.title = message;
+
+        int btnCount = 0;
+
+        if (otherButtonTitles != nil) {
+            btnCount = otherButtonTitles.count;
+            for (int i = 0; i < otherButtonTitles.count; i++) {
+                [actionSheet addButtonWithTitle:otherButtonTitles[i]];
             }
-        };
-        
-        void (^standardActionSheetBlock)(void) = ^{
-            alert.actionSheet =  [UIActionSheet showInView:viewController.view
-                                                 withTitle:title
-                                         cancelButtonTitle:cancelButtonTitle
-                                    destructiveButtonTitle:destructiveButtonTitle
-                                         otherButtonTitles:otherButtonTitles
-                                                  tapBlock:actionSheetTapBlock];
-        };
-        
-        if (popoverPresentationControllerBlock) {
-            
-            RMPopoverPresentationController *configuredPopover = [RMPopoverPresentationController new];
-            
-            popoverPresentationControllerBlock(configuredPopover);
-            
-            if (configuredPopover.barButtonItem) {
-                alert.actionSheet = [UIActionSheet showFromBarButtonItem:configuredPopover.barButtonItem
-                                                                animated:YES
-                                                               withTitle:title
-                                                       cancelButtonTitle:cancelButtonTitle
-                                                  destructiveButtonTitle:destructiveButtonTitle
-                                                       otherButtonTitles:otherButtonTitles
-                                                                tapBlock:actionSheetTapBlock];
-            } else if (configuredPopover.sourceView) {
-                alert.actionSheet = [UIActionSheet showFromRect:configuredPopover.sourceRect
-                                                         inView:configuredPopover.sourceView
-                                                       animated:YES
-                                                      withTitle:title
-                                              cancelButtonTitle:cancelButtonTitle
-                                         destructiveButtonTitle:destructiveButtonTitle
-                                              otherButtonTitles:otherButtonTitles
-                                                       tapBlock:actionSheetTapBlock];
-            } else {
-                standardActionSheetBlock();
-            }
-        } else {
-            standardActionSheetBlock();
         }
+
+        if (destructiveButtonTitle != nil) {
+            [actionSheet addButtonWithTitle:destructiveButtonTitle];
+            actionSheet.destructiveButtonIndex = btnCount;
+            btnCount += 1;
+        }
+
+        if (cancelButtonTitle != nil) {
+            [actionSheet addButtonWithTitle:cancelButtonTitle];
+            actionSheet.cancelButtonIndex = btnCount;
+        }
+
+        [actionSheet showInView:viewController.view];
+        alert.actionSheet = actionSheet;
     }
-    
+
     return alert;
 }
 
@@ -211,7 +162,7 @@ static NSInteger const RMUniversalAlertFirstOtherButtonIndex = 2;
     if (!self.hasCancelButton) {
         return RMUniversalAlertNoButtonExistsIndex;
     }
-    
+
     return RMUniversalAlertCancelButtonIndex;
 }
 
@@ -220,7 +171,7 @@ static NSInteger const RMUniversalAlertFirstOtherButtonIndex = 2;
     if (!self.hasOtherButtons) {
         return RMUniversalAlertNoButtonExistsIndex;
     }
-    
+
     return RMUniversalAlertFirstOtherButtonIndex;
 }
 
@@ -229,8 +180,9 @@ static NSInteger const RMUniversalAlertFirstOtherButtonIndex = 2;
     if (!self.hasDestructiveButton) {
         return RMUniversalAlertNoButtonExistsIndex;
     }
-    
+
     return RMUniversalAlertDestructiveButtonIndex;
 }
+
 
 @end

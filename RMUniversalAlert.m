@@ -59,11 +59,30 @@ static NSInteger const RMUniversalAlertFirstOtherButtonIndex = 2;
                                                                         }
                                                                     }];
     } else {
-        UIAlertView *alertView = [[UIAlertView alloc]initWithTitle:title
-                                                           message:message
-                                                          delegate:viewController
-                                                 cancelButtonTitle:cancelButtonTitle
-                                                 otherButtonTitles:nil];
+
+        UIAlertView *alertView = [[UIAlertView alloc] init];
+        [alertView setTitle:title];
+        [alertView setMessage:message];
+        [alertView setDelegate:viewController];
+
+        int btnCount = 0;
+        if (otherButtonTitles != nil) {
+            btnCount = otherButtonTitles.count;
+            for (int i = 0; i < otherButtonTitles.count; i++) {
+                [alertView addButtonWithTitle:otherButtonTitles[i]];
+            }
+        }
+
+        if (destructiveButtonTitle != nil) {
+            [alertView addButtonWithTitle:destructiveButtonTitle];
+            btnCount += 1;
+        }
+
+        if (cancelButtonTitle != nil) {
+            [alertView addButtonWithTitle:cancelButtonTitle];
+            alertView.cancelButtonIndex = btnCount;
+        }
+
         [alertView show];
     }
 
